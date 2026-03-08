@@ -1,5 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { ThemeProvider } from 'next-themes'
 import { entrypoints } from 'virtual:recommand-file-based-router'
 
 const nestEntrypoints = (entrypoints: Array<React.ComponentType<{ children?: React.ReactNode }>>): React.ReactNode => {
@@ -15,6 +16,8 @@ const nestEntrypoints = (entrypoints: Array<React.ComponentType<{ children?: Rea
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    {nestEntrypoints(entrypoints)}
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      {nestEntrypoints(entrypoints)}
+    </ThemeProvider>
   </React.StrictMode>
 )
