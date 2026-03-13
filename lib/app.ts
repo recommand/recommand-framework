@@ -5,6 +5,8 @@ export type RecommandApp = {
     name: string;
     apiMount?: string;
     absolutePath: string;
+    termsOfUse?: string;
+    privacyPolicy?: string;
 }
 
 export async function getApps(): Promise<RecommandApp[]> {
@@ -26,12 +28,14 @@ export async function getApps(): Promise<RecommandApp[]> {
             const packageJsonData = JSON.parse(packageJson);
             const appName = packageJsonData.name;
             const apiMount = packageJsonData.recommand?.apiMount;
+            const termsOfUse = packageJsonData.recommand?.termsOfUse;
+            const privacyPolicy = packageJsonData.recommand?.privacyPolicy;
 
             if(appName === "recommand-framework") {
                 continue;
             }
 
-            apps.push({ name: appName, absolutePath: fullPath, apiMount });
+            apps.push({ name: appName, absolutePath: fullPath, apiMount, termsOfUse, privacyPolicy });
         }
     }
 
