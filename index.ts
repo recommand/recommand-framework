@@ -218,4 +218,5 @@ window.__vite_plugin_react_preamble_installed__ = true
 export default {
   fetch: hono.fetch,
   idleTimeout: -1,
+  maxRequestBodySize: 500 * 1024 * 1024, // 500MB
 };
