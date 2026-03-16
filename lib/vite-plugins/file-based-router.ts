@@ -110,6 +110,11 @@ export function FileBasedRouterPlugin(): Plugin {
         // Collect routes from all apps
         for (const app of apps) {
           const appDir = path.resolve(app.absolutePath, "app");
+          try {
+            await fs.access(appDir);
+          } catch {
+            continue; // Skip packages without an app/ directory
+          }
           const route = await getAllRoutes(app, appDir, "");
           if (route) {
             allRoutes.push(route);
