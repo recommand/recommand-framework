@@ -215,8 +215,34 @@ window.__vite_plugin_react_preamble_installed__ = true
   );
 }
 
-export default {
-  fetch: hono.fetch,
-  idleTimeout: -1,
-  maxRequestBodySize: 500 * 1024 * 1024, // 500MB
-};
+const DEFAULT_PORT = 3000;
+const MAX_PORT_ATTEMPTS = 10;
+
+function serve(port: number) {
+  Bun.serve({
+    fetch: hono.fetch,
+    idleTimeout: 0,
+    port,
+    maxRequestBodySize: 500 * 1024 * 1024, // 500MB
+  });
+  console.log(`Server running on http://localhost:${port}`);
+}
+
+if (isDev) {
+  let port = DEFAULT_PORT;
+  for (let i = 0; i < MAX_PORT_ATTEMPTS; i++) {
+    try {
+      serve(port);
+      break;
+    } catch (e: any) {
+      if (e?.code === "EADDRINUSE") {
+        console.warn(`Port ${port} is in use, trying ${port + 1}...`);
+        port++;
+      } else {
+        throw e;
+      }
+    }
+  }
+} else {
+  serve(DEFAULT_PORT);
+}
