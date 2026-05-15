@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { FileBasedRouterPlugin } from './lib/vite-plugins/file-based-router'
@@ -13,6 +14,7 @@ export default defineConfig({
     DynamicAliasPlugin(),
   ],
   root: "./app",
+  envDir: path.resolve(__dirname, "../.."),
   resolve: {
     alias: {
       "@recommand": __dirname,
