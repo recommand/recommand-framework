@@ -37,7 +37,7 @@
     "@types/bcrypt": "^5.0.2",
     "bcrypt": "^5.1.1",
     "dotenv": "^16.4.7",
-    "drizzle-orm": "0.39.3",
+    "drizzle-orm": "0.45.2",
     "hono": "^4.7.2",
     "hono-openapi": "^0.4.6",
     "jose": "^6.0.6",
