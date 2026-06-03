@@ -27,5 +27,8 @@ export default defineConfig({
     hmr: {
       clientPort: 5173,
     },
+    watch: {
+      ignored: ['**/.env', '**/.env.*']
+    }
   },
 })
