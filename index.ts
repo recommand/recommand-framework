@@ -39,8 +39,14 @@ for (const app of [frameworkApp, ...apps]) {
   dotenv.config({ path: envPath, override: true });
 }
 
-// Run all migrations chronologically across all apps
-await migrateAllApps([frameworkApp, ...apps]);
+// Run all migrations chronologically across all apps. Deployments that own no
+// database (e.g. the customer-facing portal) set SKIP_MIGRATIONS=true and boot
+// without a DATABASE_URL.
+if (process.env.SKIP_MIGRATIONS === "true") {
+  console.log("Skipping migrations (SKIP_MIGRATIONS=true)");
+} else {
+  await migrateAllApps([frameworkApp, ...apps]);
+}
 
 // Attach all apps
 let indexOverride: string | null = null;
