@@ -12,6 +12,7 @@
     "app:dev": "NODE_ENV=development vite",
     "app:build": "NODE_ENV=production bun run typecheck && vite build",
     "typecheck": "bun run scripts/typecheck.ts",
+    "translations:analyze": "bun run scripts/analyze-translations.ts",
     "app:preview": "NODE_ENV=production vite preview",
     "init-package": "bun run scripts/init-package.ts",
     "rm-package": "bun run scripts/rm-package.ts"
