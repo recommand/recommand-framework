@@ -225,6 +225,7 @@ function serve(port: number) {
     port,
     maxRequestBodySize: 500 * 1024 * 1024, // 500MB
   });
+  process.env.PORT = String(port);
   console.log(`Server running on http://localhost:${port}`);
 }
 
