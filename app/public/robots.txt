@@ -1,0 +1,16 @@
+# This app is served by recommand-framework and reached at app.recommand.eu
+# (Peppol platform) and the HQ app. Both sit behind a login: they are software,
+# not content.
+#
+# The SPA catch-all in index.ts returns index.html with a 200 for any path that
+# is not a real file, so /anything answers 200 with the same shell. That makes
+# the crawlable URL space unbounded, and a Site Audit crawl on 2026-09-03 found
+# /login, /signup, /api-keys, /webhooks and /companies indexed as duplicates
+# with no canonical between them.
+#
+# The root stays allowed on purpose: app.recommand.eu/ ranks in the top 10 for
+# the brand name and is where someone searching "recommand" to sign in should
+# land. Everything below it is blocked.
+User-agent: *
+Allow: /$
+Disallow: /
