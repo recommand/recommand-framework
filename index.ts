@@ -2,7 +2,7 @@ import "./env";
 import { Hono } from "hono";
 import dotenv from "dotenv";
 import { getApps } from "./lib/app";
-import { attach } from "./lib/attach";
+import { attachApps } from "./lib/attach";
 import { migrateAllApps } from "./lib/migrate";
 import { cors } from "hono/cors";
 import { proxy } from "hono/proxy";
@@ -42,15 +42,8 @@ for (const app of [frameworkApp, ...apps]) {
 // Run all migrations chronologically across all apps
 await migrateAllApps([frameworkApp, ...apps]);
 
-// Attach all apps
-let indexOverride: string | null = null;
-for (const app of apps.reverse()) { // Attach the apps in reverse order to allow for overriding hono routes
-  // Attach the app to the hono instance
-  const { indexOverride: appIndexOverride } = await attach(app, hono);
-  if (appIndexOverride) {
-    indexOverride = appIndexOverride;
-  }
-}
+// Attach in reverse order to preserve route overrides, then start background work.
+let { indexOverride } = await attachApps(apps.reverse(), hono);
 
 // For all /api/* routes that have no definition, return a 404
 hono.all("/api/*", (c) => {
