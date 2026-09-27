@@ -1,7 +1,7 @@
 import "./env";
 import { Hono } from "hono";
 import dotenv from "dotenv";
-import { getApps } from "./lib/app";
+import { getApps, setInstalledApps } from "./lib/app";
 import { attach } from "./lib/attach";
 import { migrateAllApps } from "./lib/migrate";
 import { cors } from "hono/cors";
@@ -27,6 +27,7 @@ hono.use(
 );
 
 const apps = await getApps();
+setInstalledApps(apps);
 // Create a framework app object for migrations
 const frameworkApp = {
   name: "__recommand_framework",

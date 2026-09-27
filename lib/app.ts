@@ -7,6 +7,20 @@ export type RecommandApp = {
     absolutePath: string;
     termsOfUse?: string;
     privacyPolicy?: string;
+    // Declares that the package registers the deployment's entitlement resolver.
+    entitlementResolver?: boolean;
+}
+
+let installedApps: RecommandApp[] = [];
+
+/** Record the apps this process runs, before any of them initializes. */
+export function setInstalledApps(apps: RecommandApp[]) {
+    installedApps = [...apps];
+}
+
+/** The apps this process runs; empty outside the server, for example in tests. */
+export function getInstalledApps(): RecommandApp[] {
+    return installedApps;
 }
 
 export async function getApps(): Promise<RecommandApp[]> {
@@ -30,12 +44,13 @@ export async function getApps(): Promise<RecommandApp[]> {
             const apiMount = packageJsonData.recommand?.apiMount;
             const termsOfUse = packageJsonData.recommand?.termsOfUse;
             const privacyPolicy = packageJsonData.recommand?.privacyPolicy;
+            const entitlementResolver = packageJsonData.recommand?.entitlementResolver === true;
 
             if(appName === "recommand-framework") {
                 continue;
             }
 
-            apps.push({ name: appName, absolutePath: fullPath, apiMount, termsOfUse, privacyPolicy });
+            apps.push({ name: appName, absolutePath: fullPath, apiMount, termsOfUse, privacyPolicy, entitlementResolver });
         }
     }
 
