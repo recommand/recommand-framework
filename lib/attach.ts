@@ -5,41 +5,17 @@ import { frameworkLogger } from "./logger";
 import { serveStatic } from "hono/bun";
 import { existsSync, readdirSync } from "node:fs";
 
-/**
- * Extra API mounts a package can export as `apiMounts`, next to its default
- * server. Each entry is mounted at `/api/<path>` (`/api` for an empty path),
- * so a package can keep serving routes whose URLs predate its ownership of
- * them, for example after routes moved here from another package.
- */
-export type ApiMount = {
-  path: string;
-  server: Hono<any, any, any>;
-};
-
-export function apiMountPath(path: string): string {
-  return ["api", path].filter(Boolean).join("/");
-}
-
 export async function attach(
   app: RecommandApp,
   hono: Hono
-): Promise<{ indexOverride: string | null }> {
+): Promise<{ indexOverride: string | null; start?: () => void | Promise<void> }> {
   frameworkLogger.info(`Loading ${app.name} from ${app.absolutePath}`);
   const appModule = await import(join(app.absolutePath, "index.ts"));
   await appModule.init(app, hono);
   try {
-    hono.route(apiMountPath(app.apiMount ?? app.name), appModule.default);
+    hono.route(["api", app.apiMount ?? app.name].filter(Boolean).join("/"), appModule.default);
   } catch (e) {
     frameworkLogger.error(`Failed to register api routes for ${app.name}`);
-  }
-
-  const apiMounts: ApiMount[] = appModule.apiMounts ?? [];
-  for (const mount of apiMounts) {
-    try {
-      hono.route(apiMountPath(mount.path), mount.server);
-    } catch (e) {
-      frameworkLogger.error(`Failed to register api mount /${apiMountPath(mount.path)} for ${app.name}`);
-    }
   }
 
   // For each file in the public folder, register a root route
@@ -60,5 +36,17 @@ export async function attach(
 
   frameworkLogger.info(`${app.name} is loaded`);
 
+  return { indexOverride, start: appModule.start };
+}
+
+export async function attachApps(apps: RecommandApp[], hono: Hono) {
+  let indexOverride: string | null = null;
+  const starters: Array<() => void | Promise<void>> = [];
+  for (const app of apps) {
+    const attached = await attach(app, hono);
+    if (attached.indexOverride) indexOverride = attached.indexOverride;
+    if (attached.start) starters.push(attached.start);
+  }
+  for (const start of starters) await start();
   return { indexOverride };
 }

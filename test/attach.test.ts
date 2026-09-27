@@ -1,47 +1,83 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { afterEach, expect, test } from "bun:test";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Hono } from "hono";
-import { apiMountPath, attach } from "../lib/attach";
+import { attachApps } from "../lib/attach";
 
-// A package serves its default server under /api/<name>, and can keep serving
-// routes at older URLs through extra mounts it exports as `apiMounts`.
+const directories: string[] = [];
+async function fixture() {
+  const directory = await mkdtemp(join(import.meta.dir, ".startup-"));
+  directories.push(directory);
+  return async (name: string, source: string) => {
+    const absolutePath = join(directory, name);
+    await mkdir(absolutePath);
+    await writeFile(join(absolutePath, "index.ts"), `
+      import { Hono } from "hono";
+      export default new Hono().get("/shared", (c) => c.text("${name}"));
+      ${source}
+    `);
+    return { name, absolutePath, apiMount: "" };
+  };
+}
 
-let directory: string;
-
-beforeAll(async () => {
-  // Inside the package, so the example module resolves hono like a package does.
-  directory = await mkdtemp(join(import.meta.dir, ".attach-test-"));
-  await writeFile(
-    join(directory, "index.ts"),
-    `import { Hono } from "hono";
-const server = new Hono();
-server.get("/own", (c) => c.text("own"));
-const legacy = new Hono();
-legacy.get("/v1/:teamId/legacy", (c) => c.text("legacy " + c.req.param("teamId")));
-export const apiMounts = [{ path: "", server: legacy }, { path: "other", server: legacy }];
-export async function init() {}
-export default server;
-`
-  );
+afterEach(async () => {
+  await Promise.all(directories.splice(0).map((directory) => rm(directory, { recursive: true })));
 });
 
-afterAll(async () => {
-  await rm(directory, { recursive: true, force: true });
+test("background work waits for a later package's slow initialization", async () => {
+  const app = await fixture();
+  const worker = await app("worker", `
+    export let started = false;
+    export async function init() {}
+    export function start() { started = true; }
+  `);
+  const policy = await app("policy", `
+    export let release;
+    export let entered;
+    export const initializing = new Promise(resolve => { entered = resolve; });
+    const ready = new Promise(resolve => { release = resolve; });
+    export async function init() { entered(); await ready; }
+  `);
+  const workerModule = await import(join(worker.absolutePath, "index.ts"));
+  const policyModule = await import(join(policy.absolutePath, "index.ts"));
+  const loading = attachApps([worker, policy], new Hono());
+  await policyModule.initializing;
+  await Bun.sleep(20);
+  expect(workerModule.started).toBe(false);
+  policyModule.release();
+  await loading;
+  expect(workerModule.started).toBe(true);
 });
 
-describe("attach", () => {
-  test("mounts the default server and every extra mount", async () => {
-    const hono = new Hono();
-    await attach({ name: "example", absolutePath: directory }, hono);
+test("failed initialization prevents every background worker from starting", async () => {
+  const app = await fixture();
+  const worker = await app("worker", `
+    export let started = false;
+    export async function init() {}
+    export function start() { started = true; }
+  `);
+  const broken = await app("broken", `
+    export async function init() { throw new Error("policy unavailable"); }
+  `);
+  const workerModule = await import(join(worker.absolutePath, "index.ts"));
+  await expect(attachApps([worker, broken], new Hono())).rejects.toThrow("policy unavailable");
+  expect(workerModule.started).toBe(false);
+});
 
-    expect(await (await hono.request("/api/example/own")).text()).toBe("own");
-    expect(await (await hono.request("/api/v1/team_1/legacy")).text()).toBe("legacy team_1");
-    expect(await (await hono.request("/api/other/v1/team_2/legacy")).text()).toBe("legacy team_2");
-  });
+test("packages without a start hook still load and keep route precedence", async () => {
+  const app = await fixture();
+  const first = await app("first", "export async function init() {}");
+  const second = await app("second", "export async function init() {}");
+  const hono = new Hono();
+  await attachApps([first, second], hono);
+  expect(await (await hono.request("/api/shared")).text()).toBe("first");
+});
 
-  test("builds mount paths under /api", () => {
-    expect(apiMountPath("")).toBe("api");
-    expect(apiMountPath("admin")).toBe("api/admin");
-  });
+test("an asynchronous start failure propagates to the server entry point", async () => {
+  const app = await fixture();
+  const broken = await app("broken", `
+    export async function init() {}
+    export async function start() { throw new Error("worker unavailable"); }
+  `);
+  await expect(attachApps([broken], new Hono())).rejects.toThrow("worker unavailable");
 });
