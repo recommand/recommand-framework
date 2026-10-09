@@ -6,7 +6,7 @@ import { attachApps } from "./lib/attach";
 import { migrateAllApps } from "./lib/migrate";
 import { cors } from "hono/cors";
 import { proxy } from "hono/proxy";
-import { serveStatic } from "hono/bun";
+import { serveStatic } from "@hono/bun";
 import fs from "fs/promises";
 import path from "path";
 import { openAPISpecs } from "hono-openapi";
