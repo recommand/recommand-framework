@@ -10,7 +10,7 @@ import { serveStatic } from "@hono/bun";
 import fs from "fs/promises";
 import path from "path";
 import { openAPISpecs } from "hono-openapi";
-import { apiReference } from "@scalar/hono-api-reference";
+import { Scalar } from "@scalar/hono-api-reference";
 import { actionFailure } from "./lib/utils";
 
 const isDev = process.env.NODE_ENV === "development";
@@ -82,11 +82,10 @@ hono.get(
 
 hono.get(
   "/api-reference",
-  apiReference({
+  Scalar({
     theme: "saturn",
     pageTitle: "Recommand API Documentation",
-    // @ts-ignore
-    spec: { url: "/openapi" },
+    url: "/openapi",
     generateOperationSlug: (operation) => `${operation.method}${operation.path}`,
     hideClientButton: true,
     authentication: {
