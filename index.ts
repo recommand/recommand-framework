@@ -200,11 +200,22 @@ window.__vite_plugin_react_preamble_installed__ = true
           return path.join(process.cwd(), "app/dist", normalizedPath);
         }
 
+        // Clients probe well-known URIs (RFC 8615), for example for OAuth
+        // discovery. index.html would answer with a 200 and claim the
+        // document exists, so these stay unresolved and 404 below.
+        if (normalizedPath.startsWith("/.well-known/")) {
+          return fullPath;
+        }
+
         // Default to index.html for all other routes
         return indexOverride || path.join(process.cwd(), "app/dist/index.html");
       },
     })
   );
+
+  hono.get("/.well-known/*", (c) => {
+    return c.json(actionFailure("Not found"), 404);
+  });
 }
 
 const DEFAULT_PORT = 3000;
