@@ -2,7 +2,7 @@ import type { Hono } from "hono";
 import { join } from "node:path";
 import { type RecommandApp } from "./app";
 import { frameworkLogger } from "./logger";
-import { serveStatic } from "hono/bun";
+import { serveStatic } from "@hono/bun";
 import { existsSync, readdirSync } from "node:fs";
 
 export async function attach(
