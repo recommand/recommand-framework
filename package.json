@@ -36,7 +36,7 @@
     "@hono/bun": "^1.0.1",
     "@hono/zod-validator": "^0.9.1",
     "@radix-ui/react-slot": "^1.1.2",
-    "@scalar/hono-api-reference": "^0.7.1",
+    "@scalar/hono-api-reference": "^0.12.11",
     "@tailwindcss/vite": "^4.1.4",
     "@types/bcrypt": "^5.0.2",
     "bcrypt": "^5.1.1",
