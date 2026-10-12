@@ -1,0 +1,32 @@
+name: test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: typecheck and tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      # The typecheck script checks every package it finds next to `framework`.
+      # Checking out into its own directory keeps that to the framework itself.
+      - uses: actions/checkout@v4
+        with:
+          path: framework
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install
+        working-directory: framework
+
+      - run: bun run typecheck
+        working-directory: framework
+
+      - run: bun run test
+        working-directory: framework
