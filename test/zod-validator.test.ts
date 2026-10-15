@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Hono } from "hono";
+import { generateSpecs } from "hono-openapi";
 import { z } from "zod";
 import { zodValidator } from "../lib/zod-validator";
 
@@ -128,5 +129,59 @@ describe("zodValidator", () => {
       "Invalid union, make sure your input is consistent with one of the possible types for teamId.",
     ]);
     expect(body.invalidInputDetails[0].unionErrors).toHaveLength(2);
+  });
+});
+
+/**
+ * The request body a route validated by `zodValidator` gets in the OpenAPI
+ * document hono-openapi generates for it.
+ */
+const documentedRequestBody = async (schema: z.ZodType) => {
+  const app = new Hono().post("/", zodValidator("json", schema), (c) =>
+    c.json({ success: true })
+  );
+  const document = await generateSpecs(app);
+  return document.paths["/"]?.post?.requestBody as
+    | { required?: boolean }
+    | undefined;
+};
+
+describe("zodValidator in the OpenAPI document", () => {
+  test("marks a body the route needs as required", async () => {
+    const body = await documentedRequestBody(z.object({ name: z.string() }));
+
+    expect(body?.required).toBe(true);
+  });
+
+  test("leaves a body optional when the route accepts a request without one", async () => {
+    const body = await documentedRequestBody(
+      z.object({ name: z.string().optional() })
+    );
+
+    expect(body?.required).toBeUndefined();
+  });
+
+  test("marks a body required when a refinement rejects a request without one", async () => {
+    const body = await documentedRequestBody(
+      z
+        .object({ email: z.string().optional(), name: z.string().optional() })
+        .refine((value) => value.email !== undefined || value.name !== undefined)
+    );
+
+    expect(body?.required).toBe(true);
+  });
+
+  test("leaves query parameters as they are", async () => {
+    const app = new Hono().get(
+      "/",
+      zodValidator("query", z.object({ page: z.string() })),
+      (c) => c.json({ success: true })
+    );
+    const document = await generateSpecs(app);
+
+    expect(document.paths["/"]?.get?.requestBody).toBeUndefined();
+    expect(document.paths["/"]?.get?.parameters).toEqual([
+      expect.objectContaining({ in: "query", name: "page", required: true }),
+    ]);
   });
 });

@@ -1,5 +1,6 @@
 import type { Env, ValidationTargets } from 'hono';
 import type { z } from 'zod';
+import { uniqueSymbol } from "hono-openapi";
 import { validator as baseZValidator, resolver as baseZResolver } from "hono-openapi/zod";
 
 type InputDetail = {
@@ -20,7 +21,7 @@ export function zodValidator<
     target: Target,
     schema: T,
 ) {
-    return baseZValidator<T, Target, E, P>(target, schema, (result, c) => {
+    const middleware = baseZValidator<T, Target, E, P>(target, schema, (result, c) => {
         if (!result.success) {
             const {invalidInputDetails, listedErrors} = cleanZodError(result.error as z.ZodError);
             return c.json({
@@ -32,7 +33,48 @@ export function zodValidator<
             }, 400);
         }
     });
+    if ((target === "json" || target === "form") && !acceptsMissingBody(schema)) {
+        describeBodyAsRequired(middleware);
+    }
+    return middleware;
 }
+
+/** What hono-openapi keeps on a validator to describe it in the OpenAPI document. */
+type Described = {
+    resolver: (...args: unknown[]) => Promise<{ docs?: { requestBody?: object } }>;
+};
+
+/**
+ * Whether a route accepts a request without a body. Hono's validator validates
+ * `{}` when there is none, so that is what the schema is asked about. A schema
+ * that can only be checked asynchronously is treated as accepting it, which
+ * leaves the document as it was.
+ */
+const acceptsMissingBody = (schema: z.ZodType): boolean => {
+    try {
+        return schema.safeParse({}).success;
+    } catch {
+        return true;
+    }
+};
+
+/**
+ * Marks the request body the validator describes as `required`. hono-openapi
+ * leaves `required` out, which OpenAPI reads as an optional body, so routes that
+ * need a body would be documented as not needing one.
+ */
+const describeBodyAsRequired = (middleware: object) => {
+    const described = (middleware as Record<symbol, Described | undefined>)[uniqueSymbol];
+    if (!described) return;
+    const resolve = described.resolver;
+    described.resolver = async (...args) => {
+        const result = await resolve(...args);
+        const requestBody = result.docs?.requestBody;
+        return requestBody
+            ? { ...result, docs: { ...result.docs, requestBody: { ...requestBody, required: true } } }
+            : result;
+    };
+};
 
 export function zodResolver(schema: z.ZodType) {
     return baseZResolver(schema);
