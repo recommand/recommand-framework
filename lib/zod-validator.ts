@@ -87,7 +87,9 @@ const acceptsMissingBody = (schema: z.ZodTypeAny): boolean => {
  */
 const describeBodyAsRequired = (middleware: object) => {
     const described = (middleware as Record<symbol, Described | undefined>)[uniqueSymbol];
-    if (!described) return;
+    if (!described) {
+        return;
+    }
     const resolve = described.resolver;
     described.resolver = async (...args) => {
         const result = await resolve(...args);
