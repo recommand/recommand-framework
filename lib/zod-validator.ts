@@ -1,5 +1,6 @@
 import type { Env, ValidationTargets } from 'hono';
-import type { z } from 'zod';
+import { ZodDefault, ZodEffects, ZodNullable, ZodObject, ZodOptional, type z } from 'zod';
+import { uniqueSymbol } from "hono-openapi";
 import { validator as baseZValidator, resolver as baseZResolver } from "hono-openapi/zod";
 
 type InputDetail = {
@@ -20,7 +21,7 @@ export function zodValidator<
     target: Target,
     schema: T,
 ) {
-    return baseZValidator<T, Target, E, P>(target, schema, (result, c) => {
+    const middleware = baseZValidator<T, Target, E, P>(target, schema, (result, c) => {
         if (!result.success) {
             const {invalidInputDetails, listedErrors} = cleanZodError(result.error as z.ZodError);
             return c.json({
@@ -32,7 +33,72 @@ export function zodValidator<
             }, 400);
         }
     });
+    if ((target === "json" || target === "form") && !acceptsMissingBody(schema)) {
+        describeBodyAsRequired(middleware);
+    }
+    return middleware;
 }
+
+/** What hono-openapi keeps on a validator to describe it in the OpenAPI document. */
+type Described = {
+    resolver: (...args: unknown[]) => Promise<{ docs?: { requestBody?: object } }>;
+};
+
+/**
+ * Whether `schema` accepts `undefined`, read from its wrappers alone. A
+ * transform only changes a value it accepted, so it is read through; a
+ * refinement or preprocessing step could reject one, so it is not.
+ */
+const acceptsUndefined = (schema: z.ZodTypeAny): boolean =>
+    schema instanceof ZodOptional ||
+    schema instanceof ZodDefault ||
+    (schema instanceof ZodNullable && acceptsUndefined(schema.unwrap())) ||
+    (schema instanceof ZodEffects &&
+        schema._def.effect.type === "transform" &&
+        acceptsUndefined(schema.innerType()));
+
+/** `schema` without the wrappers that only add `undefined`, `null` or a default. */
+const unwrap = (schema: z.ZodTypeAny): z.ZodTypeAny =>
+    schema instanceof ZodOptional || schema instanceof ZodNullable
+        ? unwrap(schema.unwrap())
+        : schema instanceof ZodDefault
+            ? unwrap(schema.removeDefault())
+            : schema;
+
+/**
+ * Whether a route accepts a request without a body. Hono's validator validates
+ * `{}` when there is none, which an object whose fields all accept `undefined`
+ * accepts. Only the schema's structure is read, so none of its refinements or
+ * transforms run when the routes are defined; a schema whose structure doesn't
+ * show it, such as one with a refinement, is taken to need a body.
+ */
+const acceptsMissingBody = (schema: z.ZodTypeAny): boolean => {
+    const body = unwrap(schema);
+    return (
+        body instanceof ZodObject &&
+        Object.values(body.shape as Record<string, z.ZodTypeAny>).every(acceptsUndefined)
+    );
+};
+
+/**
+ * Marks the request body the validator describes as `required`. hono-openapi
+ * leaves `required` out, which OpenAPI reads as an optional body, so routes that
+ * need a body would be documented as not needing one.
+ */
+const describeBodyAsRequired = (middleware: object) => {
+    const described = (middleware as Record<symbol, Described | undefined>)[uniqueSymbol];
+    if (!described) {
+        return;
+    }
+    const resolve = described.resolver;
+    described.resolver = async (...args) => {
+        const result = await resolve(...args);
+        const requestBody = result.docs?.requestBody;
+        return requestBody
+            ? { ...result, docs: { ...result.docs, requestBody: { ...requestBody, required: true } } }
+            : result;
+    };
+};
 
 export function zodResolver(schema: z.ZodType) {
     return baseZResolver(schema);
