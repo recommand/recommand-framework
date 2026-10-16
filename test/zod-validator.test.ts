@@ -161,6 +161,30 @@ describe("zodValidator in the OpenAPI document", () => {
     expect(body?.required).toBeUndefined();
   });
 
+  test("leaves a body optional when its fields are nullable as well as optional", async () => {
+    const body = await documentedRequestBody(
+      z.object({ name: z.string().optional().nullable() })
+    );
+
+    expect(body?.required).toBeUndefined();
+  });
+
+  test("leaves a body optional when its optional fields are transformed", async () => {
+    const body = await documentedRequestBody(
+      z.object({ phone: z.string().nullish().transform((value) => value?.trim() || null) })
+    );
+
+    expect(body?.required).toBeUndefined();
+  });
+
+  test("leaves an optional body of defaulted fields optional", async () => {
+    const body = await documentedRequestBody(
+      z.object({ read: z.boolean().default(true) }).optional()
+    );
+
+    expect(body?.required).toBeUndefined();
+  });
+
   test("marks a body required when a refinement rejects a request without one", async () => {
     const body = await documentedRequestBody(
       z
@@ -168,6 +192,19 @@ describe("zodValidator in the OpenAPI document", () => {
         .refine((value) => value.email !== undefined || value.name !== undefined)
     );
 
+    expect(body?.required).toBe(true);
+  });
+
+  test("doesn't run a schema's refinements to document it", async () => {
+    let calls = 0;
+    const body = await documentedRequestBody(
+      z.object({ name: z.string().optional() }).refine(() => {
+        calls += 1;
+        return true;
+      })
+    );
+
+    expect(calls).toBe(0);
     expect(body?.required).toBe(true);
   });
 

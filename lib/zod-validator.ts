@@ -1,5 +1,5 @@
 import type { Env, ValidationTargets } from 'hono';
-import type { z } from 'zod';
+import { ZodDefault, ZodEffects, ZodNullable, ZodObject, ZodOptional, type z } from 'zod';
 import { uniqueSymbol } from "hono-openapi";
 import { validator as baseZValidator, resolver as baseZResolver } from "hono-openapi/zod";
 
@@ -45,17 +45,39 @@ type Described = {
 };
 
 /**
- * Whether a route accepts a request without a body. Hono's validator validates
- * `{}` when there is none, so that is what the schema is asked about. A schema
- * that can only be checked asynchronously is treated as accepting it, which
- * leaves the document as it was.
+ * Whether `schema` accepts `undefined`, read from its wrappers alone. A
+ * transform only changes a value it accepted, so it is read through; a
+ * refinement or preprocessing step could reject one, so it is not.
  */
-const acceptsMissingBody = (schema: z.ZodType): boolean => {
-    try {
-        return schema.safeParse({}).success;
-    } catch {
-        return true;
-    }
+const acceptsUndefined = (schema: z.ZodTypeAny): boolean =>
+    schema instanceof ZodOptional ||
+    schema instanceof ZodDefault ||
+    (schema instanceof ZodNullable && acceptsUndefined(schema.unwrap())) ||
+    (schema instanceof ZodEffects &&
+        schema._def.effect.type === "transform" &&
+        acceptsUndefined(schema.innerType()));
+
+/** `schema` without the wrappers that only add `undefined`, `null` or a default. */
+const unwrap = (schema: z.ZodTypeAny): z.ZodTypeAny =>
+    schema instanceof ZodOptional || schema instanceof ZodNullable
+        ? unwrap(schema.unwrap())
+        : schema instanceof ZodDefault
+            ? unwrap(schema.removeDefault())
+            : schema;
+
+/**
+ * Whether a route accepts a request without a body. Hono's validator validates
+ * `{}` when there is none, which an object whose fields all accept `undefined`
+ * accepts. Only the schema's structure is read, so none of its refinements or
+ * transforms run when the routes are defined; a schema whose structure doesn't
+ * show it, such as one with a refinement, is taken to need a body.
+ */
+const acceptsMissingBody = (schema: z.ZodTypeAny): boolean => {
+    const body = unwrap(schema);
+    return (
+        body instanceof ZodObject &&
+        Object.values(body.shape as Record<string, z.ZodTypeAny>).every(acceptsUndefined)
+    );
 };
 
 /**
