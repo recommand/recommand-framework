@@ -9,7 +9,7 @@ import { proxy } from "hono/proxy";
 import { serveStatic } from "@hono/bun";
 import fs from "fs/promises";
 import path from "path";
-import { openAPISpecs } from "hono-openapi";
+import { openAPIRouteHandler } from "hono-openapi";
 import { Scalar } from "@scalar/hono-api-reference";
 import { actionFailure } from "./lib/utils";
 import { createErrorHandler } from "./lib/error-handler";
@@ -55,7 +55,11 @@ hono.onError(createErrorHandler({ isDev }));
 
 hono.get(
   "/openapi",
-  openAPISpecs(hono, {
+  openAPIRouteHandler(hono, {
+    // An `Output` component is written over its input form, so the two don't
+    // repeat each other's inline enumerations.
+    composeOutputComponents: true,
+    defaultValidationErrorResponse: false,
     documentation: {
       info: {
         title: "Recommand API",
