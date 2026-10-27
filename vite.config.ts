@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 import { FileBasedRouterPlugin } from './lib/vite-plugins/file-based-router'
 import tailwindcss from '@tailwindcss/vite'
 import DynamicAliasPlugin from './lib/vite-plugins/dynamic-alias'
+import ThemePlugin from './lib/vite-plugins/theme'
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -12,6 +13,7 @@ export default defineConfig({
     tailwindcss(),
     FileBasedRouterPlugin(),
     DynamicAliasPlugin(),
+    ThemePlugin(),
   ],
   root: "./app",
   envDir: path.resolve(__dirname, "../.."),
