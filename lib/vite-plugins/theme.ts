@@ -11,11 +11,12 @@ export const THEME_ALIAS = '@app-theme';
  *
  * The deployment lists stylesheets under `recommand.theme` in its root
  * package.json, for example
- * `["@recommand/brand/fonts.css", "@recommand/brand/theme.css"]`. They are
+ * `["@acme/brand/fonts.css", "@acme/brand/theme.css"]`. They are
  * imported, in that order, from a generated stylesheet that `@app-theme`
  * points to. Core imports `@app-theme` after its own defaults, so the theme
  * lands in the same Tailwind build and overrides them. Without a theme the
- * generated stylesheet is empty and core keeps its neutral defaults.
+ * generated stylesheet is empty and core keeps its neutral defaults. Core's
+ * THEMING.md lists the tokens a theme can set.
  */
 export default function ThemePlugin(): Plugin {
   return {
