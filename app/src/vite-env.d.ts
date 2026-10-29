@@ -13,3 +13,18 @@ declare module "virtual:recommand-file-based-router" {
   export const entrypoints: React.ComponentType<{ children?: React.ReactNode }>[];
   export default routes;
 }
+
+declare module "virtual:recommand-app" {
+  /** The deployment's app identity; file entries are asset URLs. */
+  const app: {
+    name: string;
+    supportEmail?: string;
+    website?: string;
+    favicon?: string;
+    logo?: string;
+    logoDark?: string;
+    sidebarLogo?: string;
+  };
+  export { app };
+  export default app;
+}

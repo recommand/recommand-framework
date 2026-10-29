@@ -12,6 +12,7 @@ import path from "path";
 import { openAPISpecs } from "hono-openapi";
 import { Scalar } from "@scalar/hono-api-reference";
 import { actionFailure } from "./lib/utils";
+import { getAppIdentity } from "./lib/app-identity";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -55,23 +56,26 @@ hono.onError((err, c) => {
   return c.json(actionFailure(isDev ? err.message : "An error occurred."), 500);
 });
 
+// The product name from the deployment's app identity (recommand.app).
+const { name: appName } = getAppIdentity();
+
 hono.get(
   "/openapi",
   openAPISpecs(hono, {
     documentation: {
       info: {
-        title: "Recommand API",
+        title: `${appName} API`,
         version: "1.0.0",
-        description: `Welcome to the Recommand API documentation.`,
+        description: `Welcome to the ${appName} API documentation.`,
       },
-      servers: [{ url: process.env.BASE_URL!, description: "Recommand API" }],
+      servers: [{ url: process.env.BASE_URL!, description: `${appName} API` }],
       components: {
         securitySchemes: {
           httpBasic: {
             type: "http",
             scheme: "basic",
             description:
-              "Basic API key authentication. Create a new API key and secret in the Recommand dashboard.",
+              `Basic API key authentication. Create a new API key and secret in the ${appName} dashboard.`,
           },
         },
       },
@@ -84,7 +88,7 @@ hono.get(
   "/api-reference",
   Scalar({
     theme: "saturn",
-    pageTitle: "Recommand API Documentation",
+    pageTitle: `${appName} API Documentation`,
     url: "/openapi",
     generateOperationSlug: (operation) => `${operation.method}${operation.path}`,
     hideClientButton: true,
