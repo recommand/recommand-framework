@@ -13,6 +13,7 @@ import { openAPISpecs } from "hono-openapi";
 import { Scalar } from "@scalar/hono-api-reference";
 import { actionFailure } from "./lib/utils";
 import { getAppIdentity } from "./lib/app-identity";
+import { createErrorHandler } from "./lib/error-handler";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -51,10 +52,7 @@ hono.all("/api/*", (c) => {
   return c.json(actionFailure("Not found"), 404);
 });
 
-hono.onError((err, c) => {
-  console.error(err);
-  return c.json(actionFailure(isDev ? err.message : "An error occurred."), 500);
-});
+hono.onError(createErrorHandler({ isDev }));
 
 // The product name from the deployment's app identity (recommand.app).
 const { name: appName } = getAppIdentity();
