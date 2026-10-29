@@ -1,3 +1,4 @@
+import { readdirSync } from 'node:fs'
 import path from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -20,9 +21,14 @@ export default defineConfig({
   root: "./app",
   envDir: path.resolve(__dirname, "../.."),
   resolve: {
-    alias: {
-      "@recommand": __dirname,
-    },
+    // `@recommand/<folder>` points into the framework, one alias per top-level
+    // folder. Other `@recommand/*` names resolve as packages, such as
+    // `@recommand/brand`, which is also how TypeScript resolves them.
+    alias: Object.fromEntries(
+      readdirSync(__dirname, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules')
+        .map((entry) => [`@recommand/${entry.name}`, path.join(__dirname, entry.name)]),
+    ),
   },
   server: {
     port: 5173,
