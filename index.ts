@@ -9,7 +9,6 @@ import { proxy } from "hono/proxy";
 import { serveStatic } from "@hono/bun";
 import fs from "fs/promises";
 import path from "path";
-import { openAPISpecs } from "hono-openapi";
 import { Scalar } from "@scalar/hono-api-reference";
 import { actionFailure } from "./lib/utils";
 import { createErrorHandler } from "./lib/error-handler";
@@ -53,31 +52,9 @@ hono.all("/api/*", (c) => {
 
 hono.onError(createErrorHandler({ isDev }));
 
-hono.get(
-  "/openapi",
-  openAPISpecs(hono, {
-    documentation: {
-      info: {
-        title: "Recommand API",
-        version: "1.0.0",
-        description: `Welcome to the Recommand API documentation.`,
-      },
-      servers: [{ url: process.env.BASE_URL!, description: "Recommand API" }],
-      components: {
-        securitySchemes: {
-          httpBasic: {
-            type: "http",
-            scheme: "basic",
-            description:
-              "Basic API key authentication. Create a new API key and secret in the Recommand dashboard.",
-          },
-        },
-      },
-      security: [{ httpBasic: [] }],
-    },
-  })
-);
-
+// Renders the OpenAPI document the application serves at `/openapi`. Each
+// application registers that route itself, because the document's title,
+// servers and security schemes are its own.
 hono.get(
   "/api-reference",
   Scalar({
