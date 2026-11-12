@@ -4,7 +4,6 @@ import dotenv from "dotenv";
 import { getApps } from "./lib/app";
 import { attachApps } from "./lib/attach";
 import { migrateAllApps } from "./lib/migrate";
-import { cors } from "hono/cors";
 import { proxy } from "hono/proxy";
 import { serveStatic } from "@hono/bun";
 import fs from "fs/promises";
@@ -13,19 +12,14 @@ import { openAPISpecs } from "hono-openapi";
 import { Scalar } from "@scalar/hono-api-reference";
 import { actionFailure } from "./lib/utils";
 import { createErrorHandler } from "./lib/error-handler";
+import { allowOwnOrigin, rejectCrossSiteRequests } from "./lib/cross-site";
 
 const isDev = process.env.NODE_ENV === "development";
 
 const hono = new Hono();
 
-const rootDomain = new URL(process.env.BASE_URL!).hostname.split(".").slice(-2).join(".");
-const protocol = new URL(process.env.BASE_URL!).protocol;
-hono.use(
-  cors({
-    origin: [process.env.BASE_URL!, `${protocol}//${rootDomain}`],
-    credentials: true,
-  })
-);
+hono.use(allowOwnOrigin(process.env.BASE_URL!));
+hono.use(rejectCrossSiteRequests({ baseUrl: process.env.BASE_URL!, sessionCookie: "session" }));
 
 const apps = await getApps();
 // Create a framework app object for migrations
