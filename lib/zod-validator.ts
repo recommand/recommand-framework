@@ -140,6 +140,8 @@ const cleanZodError = (error: z.ZodError): {invalidInputDetails: InvalidInputDet
     };
     for (const issue of error.issues) {
         if (issue.code === 'invalid_union') {
+            // Zod gives the issues of each variant their path from the root of
+            // the input, so they already include the union's own path.
             const unionErrors = issue.unionErrors.map((unionError) =>
                 unionError.issues.map((unionErrorIssue) => ({
                     path: unionErrorIssue.path.join('.'),
@@ -153,7 +155,7 @@ const cleanZodError = (error: z.ZodError): {invalidInputDetails: InvalidInputDet
             );
             if (selected.length === 1) {
                 for (const unionErrorIssue of selected[0]!.issues) {
-                    listError([...issue.path, ...unionErrorIssue.path], unionErrorIssue.message);
+                    listError(unionErrorIssue.path, unionErrorIssue.message);
                 }
                 errorsArray.push({
                     path: issue.path.join('.'),
@@ -168,7 +170,7 @@ const cleanZodError = (error: z.ZodError): {invalidInputDetails: InvalidInputDet
             for (const unionError of issue.unionErrors) {
                 for (const unionErrorIssue of unionError.issues) {
                     if (!isDiscriminatorMismatch(unionErrorIssue)) continue;
-                    const key = [...issue.path, ...unionErrorIssue.path].join('.');
+                    const key = unionErrorIssue.path.join('.');
                     const options = accepted[key] ?? (accepted[key] = []);
                     for (const option of discriminatorOptions(unionErrorIssue)) {
                         if (!options.includes(option)) options.push(option);
