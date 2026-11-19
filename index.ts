@@ -69,9 +69,16 @@ hono.get(
             description:
               "Basic API key authentication. Create a new API key and secret in the Recommand dashboard.",
           },
+          jwt: {
+            bearerFormat: "JWT",
+            description:
+              "JWT authentication. Create a new JWT token in the Recommand dashboard.",
+            scheme: "bearer",
+            type: "http",
+          },
         },
       },
-      security: [{ httpBasic: [] }],
+      security: [{ httpBasic: [] }, { jwt: [] }],
     },
   })
 );
