@@ -119,6 +119,36 @@ describe("zodValidator", () => {
     ]);
   });
 
+  test("keys the errors of a plain union under a field by their full path", async () => {
+    const schema = z.object({
+      nested: z.union([invoiceVariant, creditNoteVariant]),
+    });
+    const { body } = await post(schema, {
+      nested: { documentType: "invoice", document: {} },
+    });
+
+    expect(Object.keys(body.errors)).toEqual([
+      "nested.document.invoiceNumber",
+    ]);
+    expect(body.errors["nested.document.invoiceNumber"]).toEqual([
+      "nested.document.invoiceNumber: Required",
+    ]);
+  });
+
+  test("names the accepted values of a plain union under a field by their full path", async () => {
+    const schema = z.object({
+      nested: z.union([invoiceVariant, creditNoteVariant]),
+    });
+    const { body } = await post(schema, {
+      nested: { documentType: "purchaseOrder", document: {} },
+    });
+
+    expect(Object.keys(body.errors)).toEqual(["nested.documentType"]);
+    expect(body.errors["nested.documentType"]).toEqual([
+      'nested.documentType: Invalid discriminator value, accepted values are: "invoice", "creditNote".',
+    ]);
+  });
+
   test("keeps the generic message for a union without a discriminator", async () => {
     const schema = z.object({
       teamId: z.union([z.string(), z.array(z.string())]),
