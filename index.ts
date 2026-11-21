@@ -13,11 +13,13 @@ import { Scalar } from "@scalar/hono-api-reference";
 import { actionFailure } from "./lib/utils";
 import { createErrorHandler } from "./lib/error-handler";
 import { allowOwnOrigin, rejectCrossSiteRequests } from "./lib/cross-site";
+import { forbidContentSniffing } from "./lib/content-type-options";
 
 const isDev = process.env.NODE_ENV === "development";
 
 const hono = new Hono();
 
+hono.use(forbidContentSniffing());
 hono.use(allowOwnOrigin(process.env.BASE_URL!));
 hono.use(rejectCrossSiteRequests({ baseUrl: process.env.BASE_URL!, sessionCookie: "session" }));
 
