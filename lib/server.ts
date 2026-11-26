@@ -4,18 +4,24 @@ import { attachApps } from "./attach";
 import { allowOwnOrigin, rejectCrossSiteRequests } from "./cross-site";
 import { createErrorHandler } from "./error-handler";
 import { migrateAllApps } from "./migrate";
+import type { OpenApiOptions } from "./openapi";
+import { registerOpenApiRoutes } from "./openapi";
 import { actionFailure } from "./utils";
 import { serveStatic } from "@hono/bun";
 import { Scalar } from "@scalar/hono-api-reference";
 import dotenv from "dotenv";
 import fs from "fs/promises";
 import { Hono } from "hono";
-import { openAPIRouteHandler } from "hono-openapi";
 import { proxy } from "hono/proxy";
 import path from "path";
 
 const DEFAULT_PORT = 3000;
 const MAX_PORT_ATTEMPTS = 10;
+
+type StartServerOptions = {
+  /** The OpenAPI document served at `/openapi` and `/llms-full.txt`. */
+  openapi: OpenApiOptions;
+};
 
 /**
  * Runs the database migrations of the framework and of every package next to
@@ -24,7 +30,7 @@ const MAX_PORT_ATTEMPTS = 10;
  * The packages are read from the parent of the working directory, so the
  * server has to run from the framework's directory.
  */
-export const startServer = async (): Promise<void> => {
+export const startServer = async ({ openapi }: StartServerOptions): Promise<void> => {
   const isDev = process.env.NODE_ENV === "development";
 
   const hono = new Hono();
@@ -58,34 +64,7 @@ export const startServer = async (): Promise<void> => {
 
   hono.onError(createErrorHandler({ isDev }));
 
-  hono.get(
-    "/openapi",
-    openAPIRouteHandler(hono, {
-      // An `Output` component is written over its input form, so the two don't
-      // repeat each other's inline enumerations.
-      composeOutputComponents: true,
-      defaultValidationErrorResponse: false,
-      documentation: {
-        info: {
-          title: "Recommand API",
-          version: "1.0.0",
-          description: `Welcome to the Recommand API documentation.`,
-        },
-        servers: [{ url: process.env.BASE_URL!, description: "Recommand API" }],
-        components: {
-          securitySchemes: {
-            httpBasic: {
-              type: "http",
-              scheme: "basic",
-              description:
-                "Basic API key authentication. Create a new API key and secret in the Recommand dashboard.",
-            },
-          },
-        },
-        security: [{ httpBasic: [] }],
-      },
-    })
-  );
+  registerOpenApiRoutes(hono, openapi);
 
   hono.get(
     "/api-reference",
