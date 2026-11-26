@@ -24,7 +24,7 @@ try {
   }
 
   // Ask for git remote
-  const gitRemote = await prompt(`${colors.blue}Enter git remote URL for the submodule:${colors.reset} `, `git@github.com:brbxai/recommand-${name}.git`);
+  const gitRemote = await prompt(`${colors.blue}Enter git remote URL for the submodule:${colors.reset} `, `git@github.com:recommand/recommand-${name}.git`);
 
   if (!gitRemote || gitRemote.trim() === '') {
     console.error(`${colors.red}❌ Git remote URL cannot be empty${colors.reset}`);
@@ -47,7 +47,7 @@ try {
 
   // Create submodule from template repository
   console.log(`${colors.yellow}📥 Creating submodule from template...${colors.reset}`);
-  execSync(`git submodule add git@github.com:brbxai/recommand-template.git ${packagePath}`, {
+  execSync(`git submodule add git@github.com:recommand/recommand-template.git ${packagePath}`, {
     stdio: 'inherit',
   });
 
