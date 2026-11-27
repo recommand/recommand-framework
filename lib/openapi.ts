@@ -120,6 +120,39 @@ export const withSortedParameters = <
   return { ...specs, paths };
 };
 
+type Tagged = { tags?: unknown };
+
+const operationTags = (item: unknown): string[] => {
+  if (item === null || typeof item !== "object") {
+    return [];
+  }
+
+  return Object.values(item).flatMap((operation: Tagged | null) =>
+    Array.isArray(operation?.tags) ? operation.tags : []
+  );
+};
+
+/**
+ * Keep only the declared tags that some operation in the document uses.
+ *
+ * A package declares a tag for each group of its routes, but an application
+ * leaves some routes out of its document, with `exclude` or `hide`, and a tag
+ * no operation uses would show up as an empty group.
+ */
+export const withUsedTags = <
+  T extends { paths?: Record<string, unknown>; tags?: { name: string }[]; webhooks?: Record<string, unknown> },
+>(specs: T): T => {
+  if (!specs.tags) {
+    return specs;
+  }
+
+  const used = new Set(
+    [...Object.values(specs.paths ?? {}), ...Object.values(specs.webhooks ?? {})].flatMap(operationTags)
+  );
+
+  return { ...specs, tags: specs.tags.filter(({ name }) => used.has(name)) };
+};
+
 /**
  * Serves the OpenAPI document of every route on `server` at `/openapi`, and the
  * same document as Markdown at `/llms-full.txt`. Exported so that tooling can
@@ -148,11 +181,12 @@ export const registerOpenApiRoutes = (
   };
   // The routes do not change once the server runs, so generate the document
   // once and serve it from both routes, with every operation's parameters in a
-  // fixed order (see withSortedParameters).
+  // fixed order (see withSortedParameters) and only the tags it uses (see
+  // withUsedTags).
   let openApiDocument: ReturnType<typeof generateSpecs> | undefined;
   const getOpenApiDocument = (c: Context) => {
     openApiDocument ??= generateSpecs(server, specsOptions, c).then(
-      withSortedParameters,
+      (document) => withUsedTags(withSortedParameters(document)),
       (error) => {
         openApiDocument = undefined;
         throw error;
